@@ -1,0 +1,67 @@
+---
+title: "Minion Run( Cassidy and Bill)"
+output:
+  html_document: default
+  html_notebook: default
+---
+
+- Library Kit **SQK-LSK208**
+- Flowcell **R9.4**
+- Run Data *04/13/2017*
+
+```{r fig.width=15, fig.height=10}
+library("ggplot2")
+library("reshape2")
+library('viridis')
+library("gridExtra")
+
+
+table_summary_file<-read.table("sequencing_summary.txt", header = T)
+#example.summary <- readFast5Summary( fast5files )
+
+head(table_summary_file)
+#Read Length Statistics
+reads_2D_table<-table_summary_file[table_summary_file$mean_qscore_2d> 0,]
+dim(reads_2D_table)
+
+
+source("fast5_stats.R")
+
+length_2d_reads<-reads_2D_table$sequence_length_2d
+length_template_reads<-table_summary_file$sequence_length_template
+length_complement_reads<-table_summary_file$sequence_length_complement
+summary_stats_2D<-fast5_stats(length_2d_reads, "2D")
+
+summary_stats_template<-fast5_stats(length_template_reads, "Template")
+
+summary_stats_complement<-fast5_stats(length_complement_reads, "Complement")
+
+cbind(summary_stats_2D, summary_stats_template,summary_stats_complement)
+
+lbl=c("0-1.9K", "2.0-3.9k", "4-5.9K","6-7.9K","8-9.9K","10.0-11.9K", "12.0-13.9K","14.0-15.9K", "16.0-17.9K","18.0-19.9K","20.0-21.9K","22.0-23.9K","24.0-25.9K","26.0-27.9K","28.0-29.9K","30.0-31.9K","32.0-33.9K", "34.0-35.9K", "36.0-37.9K", "38.0-39.9K" , "40.0K-longer")
+source("merge_length_tables.R")
+
+merged_read_distribution<-merge_length_tables(length_2d_reads,length_template_reads,length_complement_reads,lbl)
+colnames(merged_read_distribution)<-c("Length", "2D", "Template", "Complement")
+melted_length_Range<-melt(merged_read_distribution, id.vars = "Length", variable.name = 'Read', value.name='NO')
+
+
+source("plot_read_length.R")
+
+plot_read_length(melted_length_Range)+ annotation_custom(tableGrob(merged_read_distribution), xmin=15, xmax=18)
+
+#Read Quality Statistics
+length_2d_reads_q<-table_summary_file$mean_qscore_2d
+length_template_reads_q<-table_summary_file$mean_qscore_template
+length_complement_reads_q<-table_summary_file$mean_qscore_complement
+all_read_q_df<-data.frame("2D"=c(length_2d_reads_q), Template=c(length_complement_reads_q), Strand=c(length_template_reads_q))
+
+melted_all_read_q_df<-melt(all_read_q_df)
+
+plot_read_q_distribution<-ggplot(melted_all_read_q_df, aes(x=variable,y=value))  +theme( panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_blank(), panel.background =element_rect(fill='gray50', colour='black'), plot.background=element_rect(fill="gray80"))+stat_boxplot(geom ='errorbar',width = 0.1)
+plot_read_q_distribution+ geom_boxplot()
+accuracy<-function(x){ return((1-10^(x/(-10)))*100)}
+melted_all_read_q_df$accuracy<-sapply(melted_all_read_q_df$value, accuracy)
+ggplot(melted_all_read_q_df,aes(x=accuracy, fill=variable, width=0.01)) + geom_histogram(binwidth = 1, position ="identity", alpha=0.8)+scale_fill_viridis(discrete = T) +theme(axis.text.x = element_text(size = 8+0.8, angle = 45, hjust = .5, vjust = 1),axis.text.y = element_text(size=8,angle=0,hjust=1,vjust=0,face="plain", family = "Helvetica"),axis.ticks = element_blank(),  legend.direction = "horizontal", legend.title=element_blank(), legend.position="bottom", plot.title = element_text(size = 14, family = "Tahoma", face = "bold"))+theme_bw()+facet_grid(variable~ .)+geom_vline(xintercept = 90, size = 1, colour = "#FF3721",linetype = "dashed")
+
+```
