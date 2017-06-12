@@ -1,5 +1,5 @@
 ---
-title: "Minion Run( Cassidy and Bill)"
+title: "Minion Run"
 output:
   html_document: default
   html_notebook: default
